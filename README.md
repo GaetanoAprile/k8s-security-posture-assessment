@@ -19,4 +19,3 @@ Eseguire un assessment di un cluster Kubernetes locale (Minikube), identificare 
 - [ ] **Fase 5:** Documentazione e Golden Manifests
 
 ## Struttura della Repository
-(Qui elencherai le cartelle mano a mano che le crei)
