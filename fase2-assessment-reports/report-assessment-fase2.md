@@ -1,6 +1,6 @@
 # Report Assessment Iniziale (Fase 2) - Analisi delle Vulnerabilità e Postura di Sicurezza
 
-## Executive Summary e Metodologia
+
 Il presente documento illustra i risultati dell'assessment di sicurezza condotto sul cluster locale (Minikube) e sull'applicazione vulnerabile di test (*vulnerable-demo.yaml*). L'obiettivo di questa fase è mappare la superficie di attacco e valutare la deviazione dell'infrastruttura rispetto alle best practice internazionali.
 
 L'analisi è stata condotta adottando un approccio a doppio livello:
@@ -33,7 +33,7 @@ L'analisi del manifest YAML tramite kubeaudit ha restituito molteplici vulnerabi
 
 ## 3. Analisi del Rischio e Vettori di Attacco
 L'insieme delle misconfigurazioni rilevate espone l'architettura a scenari di compromissione totale (*Cluster Takeover*). Nello specifico, la combinazione di `privileged: true`, esecuzione come Root e condivisione dei namespace host rende banale l'esecuzione di un attacco di **Container Breakout** (o Container Escape). 
-Un attaccante in grado di sfruttare una vulnerabilità nell'applicativo esposto (es. tramite RCE - Remote Code Execution sulla porta NodePort aperta) potrebbe evadere dal perimetro del container e ottenere l'accesso shell diretto al nodo worker sottostante.
+Un attaccante in grado di sfruttare una vulnerabilità nell'applicativo esposto potrebbe evadere dal perimetro del container e ottenere l'accesso shell diretto al nodo worker sottostante.
 
 ---
 

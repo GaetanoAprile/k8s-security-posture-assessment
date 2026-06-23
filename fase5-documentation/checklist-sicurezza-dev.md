@@ -1,13 +1,13 @@
 # Standard Operativo e Istruzioni di Auditing (Fase 5)
 
-Questa documentazione fornisce le linee guida definitive (*Golden Path*) per il rilascio di workload sicuri all'interno del cluster e le istruzioni procedurali (SOP - Standard Operating Procedure) per l'esecuzione di una demo di auditing in tempo reale.
+Questa documentazione fornisce le linee guida definitive (*Golden Path*) per il rilascio di workload sicuri all'interno del cluster e le istruzioni procedurali per l'esecuzione di una demo di auditing in tempo reale.
 
 ## 1. Security Checklist per Deployment (Hardening Gates)
 Prima di autorizzare il deploy di un nuovo applicativo, il manifest YAML deve soddisfare i seguenti requisiti di compliance, suddivisi per dominio di sicurezza:
 
 ### A. Gestione Identità e Accessi (IAM & RBAC)
 * [ ] **RBAC Isolato:** L'applicazione non utilizza il `ServiceAccount` di default, mitigando il rischio di *token hijacking*.
-* [ ] **Principio del Least Privilege:** I permessi associati al Pod (`Role` e `RoleBinding`) sono limitati strettamente alle API necessarie (es. sola lettura).
+* [ ] **Principio del Least Privilege:** I permessi associati al Pod (`Role` e `RoleBinding`) sono limitati strettamente alle API necessarie.
 
 ### B. Sicurezza a Livello Kernel e Compute (Pod Security Context)
 * [ ] **Esecuzione Non-Root:** Il parametro `runAsNonRoot` è `true` e l'utente forzato è non privilegiato (es. `runAsUser: 101`).
@@ -20,14 +20,3 @@ Prima di autorizzare il deploy di un nuovo applicativo, il manifest YAML deve so
 ### C. Sicurezza di Rete (Network Policy)
 * [ ] **Isolamento Est-Ovest:** È presente una policy `default-deny-ingress` per impedire il traffico non esplicitamente autorizzato verso il Pod.
 * [ ] **Esposizione Sicura:** I servizi utilizzano il tipo `ClusterIP` (esposizione interna) invece di `NodePort`, demandando l'esposizione esterna a un Ingress Controller filtrato.
-
----
-
-## 2. Procedura di Auditing e Demo Live (Benchmark Output)
-Per dimostrare l'efficacia dell'hardening architetturale durante una presentazione, eseguire i seguenti step in sequenza da terminale:
-
-**Step 1: Sanificazione dell'Ambiente**
-Ripulire il namespace di default da eventuali artefatti vulnerabili precedenti:
-```bash
-kubectl delete all --all -n default
-kubectl delete networkpolicies --all -n defaults

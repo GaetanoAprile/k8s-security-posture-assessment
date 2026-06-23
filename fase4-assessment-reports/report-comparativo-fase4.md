@@ -12,7 +12,7 @@ Il manifest è stato interamente riscritto applicando il principio del *Least Pr
 L'implementazione rigorosa del Pod Security Standard ha introdotto sfide operative e architetturali, risolte come segue:
 
 ### A. Restrizione Binding Porte Privilegiate
-* **Conflitto:** Impostando `runAsNonRoot: true` (UID 101), il demone Nginx è andato in stato di `CrashLoopBackOff`. Nel kernel Linux, i processi privi della capability `CAP_NET_BIND_SERVICE` non possono aprire porte di rete inferiori alla 1024 (come la porta HTTP 80 standard).
+* **Conflitto:** Impostando `runAsNonRoot: true` (UID 101), il processo Nginx è andato in stato di `CrashLoopBackOff`. Nel kernel Linux, i processi privi della capability `CAP_NET_BIND_SERVICE` non possono aprire porte di rete inferiori alla 1024 (come la porta HTTP 80 standard).
 * **Risoluzione:** Sostituzione con l'immagine `nginx-unprivileged` e spostamento del listener sulla porta non privilegiata `8080`.
 
 ### B. Filesystem Immutabile e File PID
