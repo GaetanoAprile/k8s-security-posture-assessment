@@ -1,22 +1,45 @@
-# Checklist Operativa per Cluster Kubernetes (Dev/Test)
+# Checklist di Sicurezza e Istruzioni Demo (Fase 5)
 
-Questa checklist definisce i requisiti minimi di sicurezza (Hardening) per il deployment di applicazioni in ambiente locale (Minikube/k3s) o di sviluppo, in conformità con i benchmark CIS e le best practice di sicurezza.
+Questa documentazione fornisce le linee guida per il rilascio di workload sicuri e le istruzioni per eseguire una demo di auditing in tempo reale.
 
-## 1. Gestione dei Privilegi (Pod Security)
-- [ ] **Nessun container privilegiato:** Assicurarsi che `securityContext.privileged` sia impostato su `false` o omesso.
-- [ ] **Blocco Escalation:** Impostare `allowPrivilegeEscalation: false` per impedire ai processi figli di ottenere permessi extra.
-- [ ] **Esecuzione come Non-Root:** Il container non deve girare come amministratore. Impostare `runAsNonRoot: true` e definire un `runAsUser` specifico (es. 1000).
-- [ ] **Drop delle Capabilities:** Rimuovere i privilegi di default di Linux impostando `capabilities.drop: ["ALL"]`.
-- [ ] **File System in Sola Lettura:** Prevenire scritture non autorizzate sul disco impostando `readOnlyRootFilesystem: true`. Montare volumi `emptyDir` solo per cartelle strettamente necessarie (es. `/tmp`).
+## Checklist per Deployment Sicuri (Hardening)
 
-## 2. Isolamento (Network e Host)
-- [ ] **Isolamento Rete Host:** Non agganciare il pod alla rete del nodo fisico (`hostNetwork: false`).
-- [ ] **Isolamento Processi Host:** Non permettere al pod di vedere i processi del nodo (`hostPID: false` e `hostIPC: false`).
-- [ ] **Esposizione Sicura dei Servizi:** Evitare l'uso di `type: NodePort` a meno che non sia strettamente necessario per il debug. Utilizzare `ClusterIP` e gestire l'accesso esterno tramite Ingress o port-forwarding locale.
+Prima di effettuare il deploy di una nuova applicazione nel cluster, assicurarsi che il manifest YAML rispetti i seguenti requisiti:
 
-## 3. Gestione Accessi (RBAC)
-- [ ] **Stop al Default ServiceAccount:** Non utilizzare il `ServiceAccount` di default del namespace. Creare un ServiceAccount dedicato per l'applicazione.
-- [ ] **Principio del Minimo Privilegio:** Non assegnare mai il `ClusterRole` di `cluster-admin` ai workload applicativi.
+* [ ] **RBAC Personalizzato:** L'applicazione non utilizza il `ServiceAccount` di default.
+* [ ] **RBAC Minimo:** I permessi (`Role`/`RoleBinding`) sono limitati al minimo indispensabile (es. sola lettura).
+* [ ] **NetworkPolicy:** È presente una policy `default-deny-ingress` per isolare il pod.
+* [ ] **Esposizione Sicura:** I servizi non sono esposti direttamente sui nodi (`NodePort`), ma utilizzano `ClusterIP` con un Ingress controller autorizzato.
+* [ ] **Esecuzione Non-Root:** Il parametro `runAsNonRoot` è impostato a `true` con un `runAsUser` non privilegiato (es. 101).
+* [ ] **Privilegi Disabilitati:** Il parametro `privileged` e `allowPrivilegeEscalation` sono impostati a `false`.
+* [ ] **Filesystem Protetto:** Il parametro `readOnlyRootFilesystem` è a `true` (usare `emptyDir` per directory temporanee come `/tmp`).
+* [ ] **Capabilities:** È presente il drop esplicito di tutte le capabilities Linux (`drop: ["ALL"]`).
+* [ ] **Isolamento Host:** I parametri `hostNetwork`, `hostPID` e `hostIPC` sono impostati a `false`.
+* [ ] **Gestione Risorse:** Sono definiti esplicitamente `requests` e `limits` per CPU e Memoria.
 
-## 4. Gestione Risorse
-- [ ] **Limiti Definiti:** Impostare sempre `resources.requests` e `resources.limits` (CPU e RAM) per prevenire attacchi DoS o colli di bottiglia nel cluster locale.
+---
+
+## Preparazione e Avvio della Demo (Benchmark Output)
+
+Per dimostrare l'efficacia delle configurazioni di sicurezza durante una presentazione, seguire questi step in sequenza:
+
+1. **Ripulire l'ambiente locale:**
+   `kubectl delete all --all -n default`
+   `kubectl delete networkpolicies --all -n default`
+
+2. **Esecuzione dell'Auditing Applicativo (Kubeaudit):**
+   Scansionare il manifest sicuro prima di applicarlo per dimostrare lo score ottimale:
+   `kubeaudit all -f golden-manifest.yaml`
+   *(Output atteso: `0 high-risk vulnerabilities found`)*
+
+3. **Deploy dell'Applicazione:**
+   `kubectl apply -f golden-manifest.yaml`
+
+4. **Verifica dello Stato del Workload:**
+   `kubectl get pods`
+   *(Output atteso: Pod in stato `Running`)*
+
+5. **Test di Connessione (Bypass Privileged Ports):**
+   Avviare il tunnel su una porta non privilegiata per bypassare le restrizioni host:
+   `kubectl port-forward svc/app-template-svc 8888:8080`
+   *(Dimostrazione: Aprire il browser su `http://localhost:8888` per mostrare il servizio online)*

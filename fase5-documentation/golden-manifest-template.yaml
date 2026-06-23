@@ -1,58 +1,98 @@
 # ==========================================
-# GOLDEN MANIFEST - KUBERNETES SECURE DEPLOYMENT
+# GOLDEN MANIFEST - TEMPLATE DI SICUREZZA
 # ==========================================
 
-# 1. Identità dedicata (RBAC)
+---
+# 1. IDENTITA' E PERMESSI (RBAC)
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: secure-app-sa
+  name: app-template-sa
   namespace: default
 
 ---
-# 2. Servizio isolato (Network)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: app-template-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-template-rolebinding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: app-template-sa
+  namespace: default
+roleRef:
+  kind: Role
+  name: app-template-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# 2. ISOLAMENTO DI RETE E SERVIZIO
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress-app-template
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: app-template
+  policyTypes:
+  - Ingress
+
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: secure-app-svc
+  name: app-template-svc
 spec:
-  type: ClusterIP # Nessuna esposizione diretta sul nodo (NodePort)
+  type: ClusterIP
   selector:
-    app: secure-app
+    app: app-template
   ports:
     - port: 8080
       targetPort: 8080
 
 ---
-# 3. Workload blindato (Pod Security)
+# 3. WORKLOAD BLINDATO (Deployment)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: secure-app-deployment
+  name: app-template-deployment
+  labels:
+    app.kubernetes.io/name: app-template
+    app.kubernetes.io/version: "1.0.0"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: secure-app
+      app: app-template
   template:
     metadata:
       labels:
-        app: secure-app
-      annotations:
-        # Profilo AppArmor di default
-        container.apparmor.security.beta.kubernetes.io/main-container: runtime/default
+        app: app-template
     spec:
-      serviceAccountName: secure-app-sa # Associazione identità senza privilegi
-      hostNetwork: false                # Isolamento rete host
-      hostPID: false                    # Isolamento processi host
-      hostIPC: false                    # Isolamento IPC host
+      serviceAccountName: app-template-sa
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
       securityContext:
         seccompProfile:
-          type: RuntimeDefault          # Attivazione Seccomp
+          type: RuntimeDefault
       containers:
       - name: main-container
-        # REQUISITO: L'immagine utilizzata deve supportare l'esecuzione non-root
-        image: tua-immagine-unprivileged:tag 
+        # Sostituire l'immagine seguente con quella del proprio applicativo
+        image: nginxinc/nginx-unprivileged:latest
         ports:
         - containerPort: 8080
         resources:
@@ -66,12 +106,14 @@ spec:
           privileged: false
           allowPrivilegeEscalation: false
           runAsNonRoot: true
-          runAsUser: 1000 # Modificare in base all'utente dell'immagine
+          runAsUser: 101
           readOnlyRootFilesystem: true
+          # Rimuovere il commento ad appArmorProfile per gli ambienti Linux di produzione
+          # appArmorProfile:
+          #   type: RuntimeDefault
           capabilities:
             drop:
               - ALL
-        # Necessario se l'app deve scrivere log o file temporanei
         volumeMounts:
         - name: tmp-volume
           mountPath: /tmp
