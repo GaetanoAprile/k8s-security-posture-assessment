@@ -1,0 +1,80 @@
+# ==========================================
+# GOLDEN MANIFEST - KUBERNETES SECURE DEPLOYMENT
+# ==========================================
+
+# 1. Identità dedicata (RBAC)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secure-app-sa
+  namespace: default
+
+---
+# 2. Servizio isolato (Network)
+apiVersion: v1
+kind: Service
+metadata:
+  name: secure-app-svc
+spec:
+  type: ClusterIP # Nessuna esposizione diretta sul nodo (NodePort)
+  selector:
+    app: secure-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+
+---
+# 3. Workload blindato (Pod Security)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secure-app
+  template:
+    metadata:
+      labels:
+        app: secure-app
+      annotations:
+        # Profilo AppArmor di default
+        container.apparmor.security.beta.kubernetes.io/main-container: runtime/default
+    spec:
+      serviceAccountName: secure-app-sa # Associazione identità senza privilegi
+      hostNetwork: false                # Isolamento rete host
+      hostPID: false                    # Isolamento processi host
+      hostIPC: false                    # Isolamento IPC host
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault          # Attivazione Seccomp
+      containers:
+      - name: main-container
+        # REQUISITO: L'immagine utilizzata deve supportare l'esecuzione non-root
+        image: tua-immagine-unprivileged:tag 
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000 # Modificare in base all'utente dell'immagine
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        # Necessario se l'app deve scrivere log o file temporanei
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}

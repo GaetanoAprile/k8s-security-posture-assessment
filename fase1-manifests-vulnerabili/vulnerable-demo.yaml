@@ -1,0 +1,53 @@
+# 1. MISCONFIGURAZIONE RBAC: Diamo potere assoluto al pod
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: bad-rbac-binding
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# 2. MISCONFIGURAZIONE RETE: Esponiamo una porta diretta sul nodo
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-insicura-svc
+spec:
+  type: NodePort
+  selector:
+    app: app-insicura
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+---
+# 3. MISCONFIGURAZIONI POD: Permessi di root, privileged e host network
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-insicura
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-insicura
+  template:
+    metadata:
+      labels:
+        app: app-insicura
+    spec:
+      hostNetwork: true 
+      hostPID: true     
+      containers:
+      - name: web
+        image: nginx:1.14 
+        securityContext:
+          privileged: true 
+          runAsUser: 0     
+        ports:
+        - containerPort: 80
