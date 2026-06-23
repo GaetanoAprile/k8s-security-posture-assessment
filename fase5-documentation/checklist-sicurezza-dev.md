@@ -1,45 +1,33 @@
-# Checklist di Sicurezza e Istruzioni Demo (Fase 5)
+# Standard Operativo e Istruzioni di Auditing (Fase 5)
 
-Questa documentazione fornisce le linee guida per il rilascio di workload sicuri e le istruzioni per eseguire una demo di auditing in tempo reale.
+Questa documentazione fornisce le linee guida definitive (*Golden Path*) per il rilascio di workload sicuri all'interno del cluster e le istruzioni procedurali (SOP - Standard Operating Procedure) per l'esecuzione di una demo di auditing in tempo reale.
 
-## Checklist per Deployment Sicuri (Hardening)
+## 1. Security Checklist per Deployment (Hardening Gates)
+Prima di autorizzare il deploy di un nuovo applicativo, il manifest YAML deve soddisfare i seguenti requisiti di compliance, suddivisi per dominio di sicurezza:
 
-Prima di effettuare il deploy di una nuova applicazione nel cluster, assicurarsi che il manifest YAML rispetti i seguenti requisiti:
+### A. Gestione Identità e Accessi (IAM & RBAC)
+* [ ] **RBAC Isolato:** L'applicazione non utilizza il `ServiceAccount` di default, mitigando il rischio di *token hijacking*.
+* [ ] **Principio del Least Privilege:** I permessi associati al Pod (`Role` e `RoleBinding`) sono limitati strettamente alle API necessarie (es. sola lettura).
 
-* [ ] **RBAC Personalizzato:** L'applicazione non utilizza il `ServiceAccount` di default.
-* [ ] **RBAC Minimo:** I permessi (`Role`/`RoleBinding`) sono limitati al minimo indispensabile (es. sola lettura).
-* [ ] **NetworkPolicy:** È presente una policy `default-deny-ingress` per isolare il pod.
-* [ ] **Esposizione Sicura:** I servizi non sono esposti direttamente sui nodi (`NodePort`), ma utilizzano `ClusterIP` con un Ingress controller autorizzato.
-* [ ] **Esecuzione Non-Root:** Il parametro `runAsNonRoot` è impostato a `true` con un `runAsUser` non privilegiato (es. 101).
-* [ ] **Privilegi Disabilitati:** Il parametro `privileged` e `allowPrivilegeEscalation` sono impostati a `false`.
-* [ ] **Filesystem Protetto:** Il parametro `readOnlyRootFilesystem` è a `true` (usare `emptyDir` per directory temporanee come `/tmp`).
-* [ ] **Capabilities:** È presente il drop esplicito di tutte le capabilities Linux (`drop: ["ALL"]`).
-* [ ] **Isolamento Host:** I parametri `hostNetwork`, `hostPID` e `hostIPC` sono impostati a `false`.
-* [ ] **Gestione Risorse:** Sono definiti esplicitamente `requests` e `limits` per CPU e Memoria.
+### B. Sicurezza a Livello Kernel e Compute (Pod Security Context)
+* [ ] **Esecuzione Non-Root:** Il parametro `runAsNonRoot` è `true` e l'utente forzato è non privilegiato (es. `runAsUser: 101`).
+* [ ] **Privilege Escalation Bloccata:** I parametri `privileged` e `allowPrivilegeEscalation` sono forzati a `false` (prevenzione *Container Breakout*).
+* [ ] **Drop delle Capabilities:** È presente il drop esplicito di tutte le capabilities Linux (`drop: ["ALL"]`) per limitare le syscall al kernel.
+* [ ] **Isolamento dell'Host:** I flag `hostNetwork`, `hostPID` e `hostIPC` sono disabilitati (`false`).
+* [ ] **Infrastruttura Immutabile:** Il filesystem radice è montato in sola lettura (`readOnlyRootFilesystem: true`), delegando le scritture effimere a volumi `emptyDir` isolati (es. `/tmp`).
+* [ ] **Prevenzione Starvation:** Sono definiti esplicitamente `requests` e `limits` per mitigare i rischi di saturazione risorse (CPU/RAM).
+
+### C. Sicurezza di Rete (Network Policy)
+* [ ] **Isolamento Est-Ovest:** È presente una policy `default-deny-ingress` per impedire il traffico non esplicitamente autorizzato verso il Pod.
+* [ ] **Esposizione Sicura:** I servizi utilizzano il tipo `ClusterIP` (esposizione interna) invece di `NodePort`, demandando l'esposizione esterna a un Ingress Controller filtrato.
 
 ---
 
-## Preparazione e Avvio della Demo (Benchmark Output)
+## 2. Procedura di Auditing e Demo Live (Benchmark Output)
+Per dimostrare l'efficacia dell'hardening architetturale durante una presentazione, eseguire i seguenti step in sequenza da terminale:
 
-Per dimostrare l'efficacia delle configurazioni di sicurezza durante una presentazione, seguire questi step in sequenza:
-
-1. **Ripulire l'ambiente locale:**
-   `kubectl delete all --all -n default`
-   `kubectl delete networkpolicies --all -n default`
-
-2. **Esecuzione dell'Auditing Applicativo (Kubeaudit):**
-   Scansionare il manifest sicuro prima di applicarlo per dimostrare lo score ottimale:
-   `kubeaudit all -f golden-manifest.yaml`
-   *(Output atteso: `0 high-risk vulnerabilities found`)*
-
-3. **Deploy dell'Applicazione:**
-   `kubectl apply -f golden-manifest.yaml`
-
-4. **Verifica dello Stato del Workload:**
-   `kubectl get pods`
-   *(Output atteso: Pod in stato `Running`)*
-
-5. **Test di Connessione (Bypass Privileged Ports):**
-   Avviare il tunnel su una porta non privilegiata per bypassare le restrizioni host:
-   `kubectl port-forward svc/app-template-svc 8888:8080`
-   *(Dimostrazione: Aprire il browser su `http://localhost:8888` per mostrare il servizio online)*
+**Step 1: Sanificazione dell'Ambiente**
+Ripulire il namespace di default da eventuali artefatti vulnerabili precedenti:
+```bash
+kubectl delete all --all -n default
+kubectl delete networkpolicies --all -n defaults

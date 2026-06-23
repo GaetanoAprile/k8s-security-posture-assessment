@@ -81,6 +81,8 @@ spec:
     metadata:
       labels:
         app: app-template
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/main-container: runtime/default
     spec:
       serviceAccountName: app-template-sa
       hostNetwork: false
