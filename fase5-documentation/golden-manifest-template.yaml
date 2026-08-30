@@ -37,6 +37,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
+---
 # 2. ISOLAMENTO DI RETE E SERVIZIO
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -49,6 +50,37 @@ spec:
       app: app-template
   policyTypes:
   - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: authorized-client
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress-app-template
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: app-template
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
 
 ---
 apiVersion: v1
@@ -61,8 +93,7 @@ spec:
     app: app-template
   ports:
     - port: 8080
-      targetPort: 8080
-
+      targetPort: 8080cle
 ---
 # 3. WORKLOAD BLINDATO (Deployment)
 apiVersion: apps/v1
@@ -81,8 +112,6 @@ spec:
     metadata:
       labels:
         app: app-template
-      annotations:
-        container.apparmor.security.beta.kubernetes.io/main-container: runtime/default
     spec:
       serviceAccountName: app-template-sa
       hostNetwork: false

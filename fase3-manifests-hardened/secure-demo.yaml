@@ -47,7 +47,15 @@ spec:
     matchLabels:
       app: secure-app
   policyTypes:
-  - Ingress 
+  - Ingress
+  ingress:                          
+  - from:
+    - podSelector:
+        matchLabels:
+          role: authorized-client
+    ports:
+    - protocol: TCP
+      port: 8080
 ---
 apiVersion: v1
 kind: Service
