@@ -1,4 +1,4 @@
-# Kubernetes Security Posture Assessment 🛡️
+# Kubernetes Security Posture Assessment
 
 Questo progetto rappresenta il lavoro tecnico svolto durante il mio percorso di tirocinio. L'obiettivo è stato quello di eseguire un assessment completo della postura di sicurezza di un cluster Kubernetes (Minikube), identificare le vulnerabilità di un workload esposto e applicare tecniche di hardening avanzate secondo gli standard del **CIS Benchmark** e il principio del **Least Privilege**.
 
